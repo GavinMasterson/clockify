@@ -102,6 +102,8 @@ reports_summary <- function(start, end, extra_args = list()) {
 #' @inheritParams reports-parameters
 #' @param extra_args Extra arguments to be passed to the
 #'  [API](https://docs.clockify.me/#tag/Time-Entry-Report).
+#'  (Breaking change since June 2026: `amount` and `rate` fields
+#'   are now missing from time entries on the Free plan).
 #'  Example: `extra_args = list(rounding = TRUE)`.
 #'
 #' @return A data frame with detailed time entries for the specified time period.
@@ -137,6 +139,13 @@ reports_detailed <- function(start, end, extra_args = list()) {
 
     entries <- tibble(entries = response$timeentries) %>%
       unnest_wider(entries)
+
+    # Handle breaking change: amount/rate sub-objects may be missing on Free plan
+    # starting June 2026 (see https://forum.clockify.me/t/breaking-change-to-the-reports-detailed-time-entry/10035)
+    if (!is.null(entries) && nrow(entries) > 0) {
+      entries$amount[is.na(entries$amount)] <- NULL
+      entries$rate[is.na(entries$rate)] <- NULL
+    }
 
     if (!nrow(entries)) break
 
