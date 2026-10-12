@@ -9,7 +9,6 @@ REPORT_DETAILED_COLS <- c(
   "billable",
   "project_id",
   "task_id",
-  "type",
   "tag_ids",
   "approval_request_id",
   "is_locked",
@@ -19,12 +18,7 @@ REPORT_DETAILED_COLS <- c(
   "user_email",
   "project_name",
   "client_name",
-  "client_id",
-  "cost_amount",
-  "cost_rate",
-  "currency",
-  "earned_amount",
-  "earned_rate"
+  "client_id"
 )
 REPORT_WEEKLY_COLS <- c("user_name", "duration", "amount", "projects")
 

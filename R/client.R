@@ -47,7 +47,7 @@ clients <- function(concise = TRUE) {
 
 #' Get client
 #'
-#' @inheritParams client-parameters
+#' @param client_id Client ID
 #'
 #' @return A data frame with one record per client
 #' @export
@@ -59,9 +59,9 @@ clients <- function(concise = TRUE) {
 client <- function(client_id, concise = TRUE) {
   path <- sprintf("/workspaces/%s/clients/%s", workspace(), client_id)
 
-  GET(path) %>%
+  clockify:::GET(path) %>%
     content() %>%
-    parse_client(concise = concise)
+    clockify:::parse_client(concise = concise)
 }
 
 #' Add a new client to workspace

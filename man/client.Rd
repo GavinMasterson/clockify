@@ -8,8 +8,6 @@ client(client_id, concise = TRUE)
 }
 \arguments{
 \item{client_id}{Client ID}
-
-\item{concise}{Generate concise output}
 }
 \value{
 A data frame with one record per client
