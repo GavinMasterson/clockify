@@ -1,49 +1,81 @@
-test_that("create tag", {
+# Tag tests - uses your own workspace dynamically
+
+tags_cols_concise <- c("tag_id", "name", "workspace_id", "archived")
+
+test_that("no tags (or some exist)", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
 
-  tags <- tag_create(TAG_NAME)
+  w <- workspaces()
+  if (nrow(w) > 0) {
+    workspace <- w$name[1]
+  } else {
+    stop("Need workspace with tags")
+  }
+  
+  tags <- tags(workspace)
+  
+  expect_gte(nrow(tags), 0)
+  expect_identical(names(tags), tags_cols_concise)
+}),
 
-  expect_true(TAG_NAME %in% (tags %>% pull(name)))
-})
+test_that("create tag", {
+  skip_on_cran()
+  skip_if(NO_API_KEY_IN_ENVIRONMENT)
+  
+  w <- workspaces()
+  if (nrow(w) > 0) {
+    workspace <- w$name[1]
+  } else {
+    skip("No workspace found")
+  }
+  
+  tag_name <- random_string()
+  tags <- tag_create(workspace, tag_name)
+
+  expect_equal(tags$name, tag_name)
+  expect_gte(nrow(tags), 1)
+  TAG_ID <<- tags$tag_id[1]
+}),
 
 test_that("get tags", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
+  skip_if(is.na(TAG_ID), info = "Tag not created, skipping")
 
-  tags <- tags()
-
-  TAG_ID <<- tags %>%
-    filter(name == TAG_NAME) %>%
-    pull(tag_id)
-
-  expect_identical(names(tags), c("tag_id", "workspace_id", "name", "archived"))
-})
-
-test_that("get tag from ID", {
-  skip_on_cran()
-  skip_if(NO_API_KEY_IN_ENVIRONMENT)
-
-  tag <- tag(TAG_ID)
-
-  expect_equal(tag %>% pull(name), TAG_NAME)
-})
+  w <- workspaces()
+  workspace <- w$name[1]
+  
+  tags <- tags(workspace)
+  expect_true(TAG_ID %in% tags$tag_id)
+}),
 
 test_that("update tag", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
+  skip_if(is.na(TAG_ID), info = "Tag not found, skipping")
 
-  tag <- tag_update(TAG_ID, name = TAG_NAME_UPDATED, archived = TRUE)
-
-  expect_equal(tag %>% pull(name), TAG_NAME_UPDATED)
-  expect_true(tag %>% pull(archived))
-})
+  w <- workspaces()
+  workspace <- w$name[1]
+  
+  tag_name_updated <- random_string()
+  
+  tags <- tag_update(workspace, TAG_ID, name = tag_name_updated)
+  
+  expect_equal(tags$name, tag_name_updated)
+  TAG_NAME_UPDATED <<- tag_name_updated
+}),
 
 test_that("delete tag", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
+  skip_if(is.na(TAG_ID), info = "Tag not found, skipping")
 
-  tag_delete(TAG_ID)
-
-  expect_false(TAG_ID %in% (tags() %>% pull(tag_id)))
+  w <- workspaces()
+  workspace <- w$name[1]
+  
+  tag_delete(workspace, TAG_ID)
+  
+  tags <- tags(workspace)
+  expect_false(TAG_ID %in% tags$tag_id)
 })

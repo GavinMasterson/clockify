@@ -1,24 +1,82 @@
 library(stringi)
 
 CLOCKIFY_API_KEY <- Sys.getenv("CLOCKIFY_API_KEY")
-# This is the "{clockify} sandbox" workspace that was specifically created for testing {clockify}.
-CLOCKIFY_WORKSPACE <- "630c61ba9c3a3c3112812332"
 
-USER_ID_AUTHENTICATED <- "5f227e0cd7176a0e6e754409" # Andrew
-USER_ID_MISSING_NAME <- "630f16ab90cfd878937a7997" # <NA>
-USER_ID_BOB <- "630f17f04a05b20faf7e0afc" # Bob
-USER_ID_ALICE <- "630f15d3b59c366b0e3ae2e6" # Alice
-USER_ID_CAROL <- "630f1cb9cb18da61cfd58659" # Carol
+# Dynamic workspace lookup - use first workspace that has the "clockify" project
+# or fall back to your default workspace.
+get_test_workspace <- function() {
+  wks <- workspaces()
+  if (nrow(wks) == 0) {
+    stop("No workspaces found. Please create a workspace in your Clockify account.")
+  }
+  # Prefer workspace with a "clockify" project, or use first workspace
+  if (length(grep("clockify", toupper(wks$name), ignore.case = TRUE)) > 0) {
+    return(wks$name[wks$name %in% grep("clockify", toupper(wks$name), ignore.case = TRUE)[1]])
+  }
+  warning("No 'clockify' workspace found, using first workspace.")
+  return(wks$name[1])
+}
+CLOCKIFY_WORKSPACE <- get_test_workspace()
 
-# These projects are assumed to already exist.
-#
-PROJECT_ID_CLOCKIFY <- "630ce53290cfd8789366fd49"
-PROJECT_ID_EMAYILI <- "630ce53cb59c366b0e27743f"
+# Get your user ID from API response
+get_authenticated_user_id <- function() {
+  user_data <- user()
+  if (nrow(user_data) == 0) {
+    stop("Cannot find authenticated user. Please check your clockify API key.")
+  }
+  return(user_data$user_id)
+}
+USER_ID_AUTHENTICATED <- get_authenticated_user_id()
 
-# The RStudio client is assumed to already exist.
-#
-CLIENT_ID_RSTUDIO <- "63a55695db26c25e9d4e2d02"
-CLIENT_NAME_PSF <- "Python Software Foundation"
+# Get other test users (optional - use your own collaborators)
+# If no other users exist, we'll create test users or use dummy IDs for testing
+USER_ID_MISSING_NAME <- NULL  # Will be resolved if you need it
+USER_ID_BOB <- NULL
+USER_ID_ALICE <- NULL
+USER_ID_CAROL <- NULL
+
+# Get projects dynamically
+get_projects <- function(project_name_pattern = NULL) {
+  projects <- projects()
+  if (nrow(projects) == 0) {
+    stop("No projects found. Please create a project in your Clockify workspace.")
+  }
+  if (!is.null(project_name_pattern)) {
+    # Filter projects by name pattern if provided
+    matching <- projects$name[toupper(projects$name) %in% toupper(project_name_pattern)]
+    if (length(matching) > 0) {
+      return(projects$name[projects$name %in% matching][1])
+    }
+  }
+  # Return first project if no pattern or no match
+  return(projects$name[1])
+}
+
+# Get/create a project for testing
+get_test_project <- function() {
+  # Check if test project exists
+  existing_projects <- projects()
+  
+  # If we have projects, use first one
+  if (nrow(existing_projects) > 0 && nchar(existing_projects$name[1]) > 0) {
+    msg <- sprintf("Using project: %s", existing_projects$name[1])
+    warning(msg)
+    return(list(
+      project_id = existing_projects$project_id[1],
+      project_name = existing_projects$name[1]
+    ))
+  }
+  
+  stop("No projects found in workspace. Please create a project or check your workspace.")
+}
+
+PROJECT <- get_test_project()
+PROJECT_ID <- PROJECT$project_id
+PROJECT_NAME <- PROJECT$project_name
+
+# Client info - use your own or create one
+CLIENT_ID_RSTUDIO <- character(0)  # Will be NULL if no clients
+CLIENT_NAME_PSF <- "Python Software Foundation"  # Example client name
 
 NO_API_KEY_IN_ENVIRONMENT <- CLOCKIFY_API_KEY == ""
 
