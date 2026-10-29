@@ -17,6 +17,7 @@
   `teamManagers` field in the API.
 * `clients()` and `tags()` return a data frame with the usual columns when
   there are none. Previously `clients()` had no columns and `tags()` failed.
+* `time_entries()` keeps the list of tags for each entry in a `tag_ids` column.
 
 # {clockify} 0.1.3
 
