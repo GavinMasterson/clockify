@@ -19,6 +19,25 @@ list_null_to_na <- function(l, nested=TRUE) {
   # nocov end
 }
 
+#' Add columns to a data frame if they are missing.
+#'
+#' The API omits some fields entirely (rather than returning `null`), depending
+#' on the data or the workspace plan. For example, `amount` and `rate` are
+#' absent from detailed report entries on the Free plan. This guarantees that
+#' the columns exist so that downstream code and output are stable.
+#'
+#' @param df A data frame.
+#' @param ... Name-value pairs giving the default value for each column. The
+#'   value is only used if the column is missing.
+#' @return A data frame with the missing columns appended.
+#' @noRd
+ensure_columns <- function(df, ...) {
+  defaults <- list(...)
+  missing <- setdiff(names(defaults), names(df))
+  df[missing] <- defaults[missing]
+  df
+}
+
 list_remove_empty <- function(l) {
   # nocov start
   rlist::list.clean(l, recursive = TRUE)

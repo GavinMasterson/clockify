@@ -1,22 +1,35 @@
 library(stringi)
 
 CLOCKIFY_API_KEY <- Sys.getenv("CLOCKIFY_API_KEY")
+NO_API_KEY_IN_ENVIRONMENT <- CLOCKIFY_API_KEY == ""
 
-# Dynamic workspace lookup - use first workspace that has the "clockify" project
-# or fall back to your default workspace.
+set_api_key(CLOCKIFY_API_KEY)
+
+# Get the ID of the workspace to test in: the workspace called "clockify" if
+# there is one, otherwise your default workspace.
 get_test_workspace <- function() {
   wks <- workspaces()
   if (nrow(wks) == 0) {
     stop("No workspaces found. Please create a workspace in your Clockify account.")
   }
-  # Prefer workspace with a "clockify" project, or use first workspace
-  if (length(grep("clockify", toupper(wks$name), ignore.case = TRUE)) > 0) {
-    return(wks$name[wks$name %in% grep("clockify", toupper(wks$name), ignore.case = TRUE)[1]])
+  if ("clockify" %in% wks$name) {
+    wks$workspace_id[wks$name == "clockify"][1]
+  } else {
+    workspace()
   }
-  warning("No 'clockify' workspace found, using first workspace.")
-  return(wks$name[1])
 }
-CLOCKIFY_WORKSPACE <- get_test_workspace()
+
+# Rates are not available on the Clockify Free plan (since June 2026), and the
+# API refuses to set them with a 403. Run code that sets a rate, and skip the
+# test if that happens.
+skip_if_rates_forbidden <- function(code) {
+  tryCatch(code, error = function(e) {
+    if (grepl("(403)", conditionMessage(e), fixed = TRUE)) {
+      skip("Rates are not enabled in this workspace (Free plan?)")
+    }
+    stop(e)
+  })
+}
 
 # Get your user ID from API response
 get_authenticated_user_id <- function() {
@@ -26,7 +39,6 @@ get_authenticated_user_id <- function() {
   }
   return(user_data$user_id)
 }
-USER_ID_AUTHENTICATED <- get_authenticated_user_id()
 
 # Get other test users (optional - use your own collaborators)
 # If no other users exist, we'll create test users or use dummy IDs for testing
@@ -36,49 +48,53 @@ USER_ID_ALICE <- NULL
 USER_ID_CAROL <- NULL
 
 # Get projects dynamically
-get_projects <- function(project_name_pattern = NULL) {
-  projects <- projects()
-  if (nrow(projects) == 0) {
+get_test_project <- function(project_name_pattern = NULL) {
+  existing_projects <- projects()
+  if (nrow(existing_projects) == 0) {
     stop("No projects found. Please create a project in your Clockify workspace.")
   }
-  if (!is.null(project_name_pattern)) {
-    # Filter projects by name pattern if provided
-    matching <- projects$name[toupper(projects$name) %in% toupper(project_name_pattern)]
-    if (length(matching) > 0) {
-      return(projects$name[projects$name %in% matching][1])
-    }
-  }
-  # Return first project if no pattern or no match
-  return(projects$name[1])
-}
-
-# Get/create a project for testing
-get_test_project <- function() {
-  # Check if test project exists
-  existing_projects <- projects()
-  
-  # If we have projects, use first one
-  if (nrow(existing_projects) > 0 && nchar(existing_projects$name[1]) > 0) {
-    msg <- sprintf("Using project: %s", existing_projects$name[1])
-    warning(msg)
+  if ("test" %in% existing_projects$project_name) {
+    project <-
+      existing_projects |>
+      dplyr::filter(project_name == "test")
+    return(list(
+      project_id = project$project_id[1],
+      project_name = project$project_name[1]
+    ))
+  } else {
+    warning("No 'test' project found, using first project")
+    # Return first project if no pattern or no match
     return(list(
       project_id = existing_projects$project_id[1],
-      project_name = existing_projects$name[1]
+      project_name = existing_projects$project_name[1]
     ))
   }
-  
-  stop("No projects found in workspace. Please create a project or check your workspace.")
 }
 
-PROJECT <- get_test_project()
-PROJECT_ID <- PROJECT$project_id
-PROJECT_NAME <- PROJECT$project_name
+# IDs set by earlier tests (with <<-) and checked with skip_if(is.na(...)) in
+# later ones. Start them as NA so that later tests skip (rather than error) if
+# the test that sets them is skipped or fails.
+PROJECT_ID <- NA
+NEW_PROJECT_ID <- NA
+CLIENT_ID_PSF <- NA
+TAG_ID <- NA
+TASK_ID <- NA
+TIME_ENTRY_ID <- NA
+SHARED_REPORT_ID <- NA
+USER_GROUP_ID <- NA
 
-# Client info - use your own or create one
-CLIENT_ID_RSTUDIO <- character(0)  # Will be NULL if no clients
-CLIENT_NAME_PSF <- "Python Software Foundation"  # Example client name
+# These lookups need the API, so only run them if there's a key. Without one the
+# API tests are skipped but offline tests (like test-util.R) can still run.
+if (!NO_API_KEY_IN_ENVIRONMENT) {
+  CLOCKIFY_WORKSPACE <- get_test_workspace()
+  workspace(CLOCKIFY_WORKSPACE)
+  USER_ID_AUTHENTICATED <- get_authenticated_user_id()
 
-NO_API_KEY_IN_ENVIRONMENT <- CLOCKIFY_API_KEY == ""
+  PROJECT <- get_test_project()
+  PROJECT_ID <- PROJECT$project_id
+  PROJECT_NAME <- PROJECT$project_name
+}
+
 
 random_string <- function(length = 24) {
   stri_rand_strings(1, length)
@@ -89,11 +105,9 @@ random_integer <- function(min = 0, max = 100) {
 }
 
 TAG_NAME <- random_string()
-TAG_ID <- NULL
 TAG_NAME_UPDATED <- random_string()
 
 TASK_NAME <- random_string()
-TASK_ID <- NULL
 TASK_NAME_UPDATED <- random_string()
 
 TIME_CURRENT <- Sys.time()

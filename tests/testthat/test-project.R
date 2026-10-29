@@ -1,4 +1,7 @@
 # Project tests - uses your own workspace dynamically
+#
+# The project from setup (PROJECT_ID) is only read here, because other test
+# files use it. These tests create, change and delete their own project.
 
 PROJECTS_COLS_CONCISE <- c("project_id", "project_name", "client_id", "billable", "archived")
 PROJECTS_COLS <- c(
@@ -12,8 +15,8 @@ test_that("get projects", {
 
   projects <- projects()
   expect_identical(names(projects), PROJECTS_COLS_CONCISE)
-  expect_gte(nrow(projects), 1, info = "You need at least one project")
-}),
+  expect_true(PROJECT_ID %in% projects$project_id)
+})
 
 test_that("extended output", {
   skip_on_cran()
@@ -21,129 +24,113 @@ test_that("extended output", {
 
   projects <- projects(concise = FALSE)
   expect_identical(names(projects), PROJECTS_COLS)
-}),
+})
 
 test_that("get project", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
+  skip_if(is.na(PROJECT_ID), message = "Project not found, skipping")
 
-  projects <- projects()
-  if (nrow(projects) == 0) {
-    stop("No projects to retrieve")
-  }
-  
-  project <- project(projects$project_id[1])
+  project <- project(PROJECT_ID)
   expect_identical(names(project), PROJECTS_COLS_CONCISE)
-}),
+  expect_identical(project$project_id, PROJECT_ID)
+})
 
 test_that("create project", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  
-  # Check if we already have projects
-  existing_projects <- projects()
-  if (nrow(existing_projects) > 0 && existing_projects$project_id[1] == PROJECT_NAME) {
-    # Use existing project
-    warning("Project already exists, skipping create test")
-    return(NULL)
-  }
-  
-  # Create or use a test project
-  project_name <- paste0("Test Project-", random_integer())
-  projects <- project_create(project_name)
 
-  expect_identical(names(projects), PROJECTS_COLS_CONCISE)
-  PROJECT_ID <<- projects$project_id
-  PROJECT_NAME <<- project_name
-}),
+  name <- sprintf("Test Project %s", random_string())
+  project <- project_create(name)
 
-test_that("update project billable rate", {
+  expect_identical(names(project), PROJECTS_COLS_CONCISE)
+  expect_equal(project$project_name, name)
+
+  NEW_PROJECT_ID <<- project$project_id
+})
+
+test_that("update user billable rate", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(PROJECT_ID), info = "Project not found, skipping")
+  skip_if(is.na(NEW_PROJECT_ID), message = "Project not created, skipping")
 
   RATE <- random_integer()
-  
-  project_update_billable_rate(PROJECT_ID, USER_ID_AUTHENTICATED, RATE)
 
-  project <- project(PROJECT_ID, concise = FALSE)
-  members <- project %>%
-    select(-project_id) %>%
-    unnest(memberships) %>%
-    filter(user_id == USER_ID_AUTHENTICATED)
-  
-  expect_true(nrow(members) > 0)
-}),
+  skip_if_rates_forbidden(
+    project_update_billable_rate(NEW_PROJECT_ID, USER_ID_AUTHENTICATED, RATE)
+  )
+
+  expect_equal(
+    project(NEW_PROJECT_ID, concise = FALSE) %>%
+      select(-project_id) %>%
+      unnest(memberships) %>%
+      filter(user_id == USER_ID_AUTHENTICATED) %>%
+      pull(rate_amount),
+    RATE
+  )
+})
 
 test_that("update project time estimate", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(PROJECT_ID), info = "Project not found, skipping")
+  skip_if(is.na(NEW_PROJECT_ID), message = "Project not created, skipping")
 
   ESTIMATE <- "PT2H45M30S"
-  
-  project_update_estimate_time(PROJECT_ID, ESTIMATE, TRUE, TRUE)
-  
-  project <- project(PROJECT_ID, concise = FALSE)
-  expect_true(!is.na(project$time_estimate$estimate) %||% TRUE)
-}),
+
+  project_update_estimate_time(NEW_PROJECT_ID, ESTIMATE, TRUE, TRUE)
+
+  expect_equal(
+    project(NEW_PROJECT_ID, concise = FALSE) %>% unnest(time_estimate) %>% pull(estimate),
+    ESTIMATE
+  )
+})
 
 test_that("update project memberships", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(PROJECT_ID), info = "Project not found, skipping")
+  skip_if(is.na(NEW_PROJECT_ID), message = "Project not created, skipping")
 
-  # Add member (authenticated user)
-  memberships <- project_update_memberships(PROJECT_ID, USER_ID_AUTHENTICATED) %>%
-    select(-project_id) %>%
-    unnest(memberships) %>%
-    pull(user_id)
-  expect_true(USER_ID_AUTHENTICATED %in% memberships)
-  
-  # Add another member if available
-  other_users <- users(active = TRUE)
-  if (nrow(other_users) >= 2) {
-    additional_user <- other_users$user_id[2]
-    memberships <- project_update_memberships(PROJECT_ID, c(USER_ID_AUTHENTICATED, additional_user))
-    result <- memberships %>%
+  get_members <- function(project) {
+    project %>%
       select(-project_id) %>%
       unnest(memberships) %>%
       pull(user_id)
-    expect_true(USER_ID_AUTHENTICATED %in% result && additional_user %in% result)
   }
-  
-  # Remove one member
-  remaining <- project_update_memberships(PROJECT_ID, USER_ID_AUTHENTICATED)
-  memberships <- remaining %>%
-    select(-project_id) %>%
-    unnest(memberships) %>%
-    pull(user_id)
+
+  # Add another member if there is one.
+  other_users <- setdiff(users(active = TRUE)$user_id, USER_ID_AUTHENTICATED)
+  if (length(other_users)) {
+    memberships <- project_update_memberships(
+      NEW_PROJECT_ID,
+      c(USER_ID_AUTHENTICATED, other_users[1])
+    ) %>% get_members()
+    expect_true(all(c(USER_ID_AUTHENTICATED, other_users[1]) %in% memberships))
+  }
+
+  # Leave only the authenticated user.
+  memberships <- project_update_memberships(NEW_PROJECT_ID, USER_ID_AUTHENTICATED) %>%
+    get_members()
   expect_true(USER_ID_AUTHENTICATED %in% memberships)
-}),
+  if (length(other_users)) {
+    expect_false(other_users[1] %in% memberships)
+  }
+})
 
 test_that("update project", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(PROJECT_ID), info = "Project not found, skipping")
+  skip_if(is.na(NEW_PROJECT_ID), message = "Project not created, skipping")
 
-  # Archive project
-  projects <- project_update(PROJECT_ID, archived = TRUE)
-  expect_true(projects$archived)
-}),
+  # Archive project. This is needed before it can be deleted.
+  project <- project_update(NEW_PROJECT_ID, archived = TRUE)
+  expect_true(project$archived)
+})
 
 test_that("delete project", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(PROJECT_ID), info = "Project not found, skipping")
+  skip_if(is.na(NEW_PROJECT_ID), message = "Project not created, skipping")
 
-  tryCatch({
-    expect_true(project_delete(PROJECT_ID))
-  }, error = function(e) {
-    # Clean up gracefully
-    warning(paste("Could not delete project:", e$message))
-  })
-  
-  projects <- projects()
-  project_name <- PROJECT_NAME
-  expect_false(projects$name[projects$name == project_name] %in% TRUE)
+  expect_true(project_delete(NEW_PROJECT_ID))
+  expect_false(NEW_PROJECT_ID %in% projects()$project_id)
 })
