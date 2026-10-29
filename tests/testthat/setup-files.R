@@ -5,20 +5,30 @@ NO_API_KEY_IN_ENVIRONMENT <- CLOCKIFY_API_KEY == ""
 
 set_api_key(CLOCKIFY_API_KEY)
 
-# Dynamic workspace lookup - use first workspace that has the "clockify" project
-# or fall back to your default workspace.
+# Get the ID of the workspace to test in: the workspace called "clockify" if
+# there is one, otherwise your default workspace.
 get_test_workspace <- function() {
   wks <- workspaces()
   if (nrow(wks) == 0) {
     stop("No workspaces found. Please create a workspace in your Clockify account.")
   }
   if ("clockify" %in% wks$name) {
-    return("clockify")
+    wks$workspace_id[wks$name == "clockify"][1]
   } else {
-    # Prefer workspace with a "clockify" project, or use first workspace
-    warning("No 'clockify' workspace found, using first workspace.")
-    return(wks$name[1])
+    workspace()
   }
+}
+
+# Rates are not available on the Clockify Free plan (since June 2026), and the
+# API refuses to set them with a 403. Run code that sets a rate, and skip the
+# test if that happens.
+skip_if_rates_forbidden <- function(code) {
+  tryCatch(code, error = function(e) {
+    if (grepl("(403)", conditionMessage(e), fixed = TRUE)) {
+      skip("Rates are not enabled in this workspace (Free plan?)")
+    }
+    stop(e)
+  })
 }
 
 # Get your user ID from API response
@@ -65,16 +75,19 @@ get_test_project <- function(project_name_pattern = NULL) {
 # later ones. Start them as NA so that later tests skip (rather than error) if
 # the test that sets them is skipped or fails.
 PROJECT_ID <- NA
+NEW_PROJECT_ID <- NA
 CLIENT_ID_PSF <- NA
 TAG_ID <- NA
 TASK_ID <- NA
 TIME_ENTRY_ID <- NA
 SHARED_REPORT_ID <- NA
+USER_GROUP_ID <- NA
 
 # These lookups need the API, so only run them if there's a key. Without one the
 # API tests are skipped but offline tests (like test-util.R) can still run.
 if (!NO_API_KEY_IN_ENVIRONMENT) {
   CLOCKIFY_WORKSPACE <- get_test_workspace()
+  workspace(CLOCKIFY_WORKSPACE)
   USER_ID_AUTHENTICATED <- get_authenticated_user_id()
 
   PROJECT <- get_test_project()
@@ -82,9 +95,6 @@ if (!NO_API_KEY_IN_ENVIRONMENT) {
   PROJECT_NAME <- PROJECT$project_name
 }
 
-# Client info - use your own or create one
-CLIENT_ID_RSTUDIO <- character(0)  # Will be NULL if no clients
-CLIENT_NAME_PSF <- "Python Software Foundation"  # Example client name
 
 random_string <- function(length = 24) {
   stri_rand_strings(1, length)
