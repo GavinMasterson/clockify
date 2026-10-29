@@ -13,7 +13,7 @@ test_that("get projects", {
   projects <- projects()
   expect_identical(names(projects), PROJECTS_COLS_CONCISE)
   expect_gte(nrow(projects), 1, info = "You need at least one project")
-}),
+})
 
 test_that("extended output", {
   skip_on_cran()
@@ -21,7 +21,7 @@ test_that("extended output", {
 
   projects <- projects(concise = FALSE)
   expect_identical(names(projects), PROJECTS_COLS)
-}),
+})
 
 test_that("get project", {
   skip_on_cran()
@@ -34,7 +34,7 @@ test_that("get project", {
   
   project <- project(projects$project_id[1])
   expect_identical(names(project), PROJECTS_COLS_CONCISE)
-}),
+})
 
 test_that("create project", {
   skip_on_cran()
@@ -55,12 +55,12 @@ test_that("create project", {
   expect_identical(names(projects), PROJECTS_COLS_CONCISE)
   PROJECT_ID <<- projects$project_id
   PROJECT_NAME <<- project_name
-}),
+})
 
 test_that("update project billable rate", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(PROJECT_ID), info = "Project not found, skipping")
+  skip_if(is.na(PROJECT_ID), message = "Project not found, skipping")
 
   RATE <- random_integer()
   
@@ -73,12 +73,12 @@ test_that("update project billable rate", {
     filter(user_id == USER_ID_AUTHENTICATED)
   
   expect_true(nrow(members) > 0)
-}),
+})
 
 test_that("update project time estimate", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(PROJECT_ID), info = "Project not found, skipping")
+  skip_if(is.na(PROJECT_ID), message = "Project not found, skipping")
 
   ESTIMATE <- "PT2H45M30S"
   
@@ -86,12 +86,12 @@ test_that("update project time estimate", {
   
   project <- project(PROJECT_ID, concise = FALSE)
   expect_true(!is.na(project$time_estimate$estimate) %||% TRUE)
-}),
+})
 
 test_that("update project memberships", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(PROJECT_ID), info = "Project not found, skipping")
+  skip_if(is.na(PROJECT_ID), message = "Project not found, skipping")
 
   # Add member (authenticated user)
   memberships <- project_update_memberships(PROJECT_ID, USER_ID_AUTHENTICATED) %>%
@@ -119,22 +119,22 @@ test_that("update project memberships", {
     unnest(memberships) %>%
     pull(user_id)
   expect_true(USER_ID_AUTHENTICATED %in% memberships)
-}),
+})
 
 test_that("update project", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(PROJECT_ID), info = "Project not found, skipping")
+  skip_if(is.na(PROJECT_ID), message = "Project not found, skipping")
 
   # Archive project
   projects <- project_update(PROJECT_ID, archived = TRUE)
   expect_true(projects$archived)
-}),
+})
 
 test_that("delete project", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(PROJECT_ID), info = "Project not found, skipping")
+  skip_if(is.na(PROJECT_ID), message = "Project not found, skipping")
 
   tryCatch({
     expect_true(project_delete(PROJECT_ID))

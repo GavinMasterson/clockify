@@ -13,28 +13,20 @@ test_that("no time entries", {
   entries <- time_entries()
   expect_identical(names(entries), TIME_ENTRIES_COLS_CONCISE)
   expect_gte(nrow(entries), 0, info = "Time entries can be empty")
-}),
+})
 
 test_that("create time entry", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
+  skip_if(is.na(PROJECT_ID), message = "Project not found, skipping")
 
-  get_projects <- function() {
-    projects <- projects()
-    if (nrow(projects) == 0) {
-      stop("No projects found. Please create a project first.")
-    }
-    return(project_id = projects$project_id[1])
-  }
-  
   # Clean up any existing time entries first
   tryCatch({
     existing_entries <- time_entries()
     walk(existing_entries$time_entry_id, time_entry_delete)
   }, error = function(e) NULL)
   
-  # Get project ID
-  project_id <- get_projects()$project_id
+  project_id <- PROJECT_ID
   
   TIME_END <- TIME_CURRENT - random_integer(86400)
   TIME_START <- TIME_END - random_integer(3600 * 6)
@@ -47,12 +39,12 @@ test_that("create time entry", {
   expect_equal(entry$description, TIME_ENTRY_DESCRIPTION)
   
   TIME_ENTRY_ID <<- entry$time_entry_id
-}),
+})
 
 test_that("get time entries", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(TIME_ENTRY_ID), info = "No time entry created yet, skipping")
+  skip_if(is.na(TIME_ENTRY_ID), message = "No time entry created yet, skipping")
 
   entries <- time_entries(user_id = USER_ID_AUTHENTICATED)
   expect_identical(names(entries), TIME_ENTRIES_COLS_CONCISE)
@@ -61,12 +53,12 @@ test_that("get time entries", {
   expect_identical(names(entries), TIME_ENTRIES_COLS)
   
   expect_true(TIME_ENTRY_ID %in% entries$time_entry_id)
-}),
+})
 
 test_that("filter time entries", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(TIME_ENTRY_ID), info = "No time entry to filter, skipping")
+  skip_if(is.na(TIME_ENTRY_ID), message = "No time entry to filter, skipping")
 
   entry <- time_entries(
     user_id = USER_ID_AUTHENTICATED,
@@ -74,23 +66,23 @@ test_that("filter time entries", {
   )
 
   expect_equal(entry$description, TIME_ENTRY_DESCRIPTION)
-}),
+})
 
 test_that("get time entry", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(TIME_ENTRY_ID), info = "No time entry created yet, skipping")
+  skip_if(is.na(TIME_ENTRY_ID), message = "No time entry created yet, skipping")
 
   entry <- time_entry(TIME_ENTRY_ID)
 
   expect_identical(names(entry), TIME_ENTRIES_COLS_CONCISE)
   expect_equal(entry$time_entry_id, TIME_ENTRY_ID)
-}),
+})
 
 test_that("update time entry", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(TIME_ENTRY_ID), info = "No time entry to update, skipping")
+  skip_if(is.na(TIME_ENTRY_ID), message = "No time entry to update, skipping")
 
   projects <- projects()
   if (nrow(projects) < 2) {
@@ -109,12 +101,12 @@ test_that("update time entry", {
   expect_equal(entry$user_id, USER_ID_AUTHENTICATED)
   expect_equal(entry$project_id, project_id)
   expect_equal(entry$description, TIME_DESCRIPTION)
-}),
+})
 
 test_that("stop running time entry", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(TIME_ENTRY_ID), info = "No time entry to stop, skipping")
+  skip_if(is.na(TIME_ENTRY_ID), message = "No time entry to stop, skipping")
 
   # Use existing time entry or create a new one
   time_end <- trunc(Sys.time(), "secs")
@@ -124,12 +116,12 @@ test_that("stop running time entry", {
 
   expect_equal(entry$user_id, USER_ID_AUTHENTICATED)
   expect_equal(as.character(entry$time_end), as.character(time_end))
-}),
+})
 
 test_that("delete time entry", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(TIME_ENTRY_ID), info = "No time entry to delete, skipping")
+  skip_if(is.na(TIME_ENTRY_ID), message = "No time entry to delete, skipping")
 
   tryCatch({
     expect_true(time_entry_delete(TIME_ENTRY_ID))

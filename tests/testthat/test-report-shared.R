@@ -15,23 +15,21 @@ get_report_time_period <- function() {
   }
   
   return(list(
-    TIME_START = as.numeric(min(entries$time_start)),
-    TIME_END = as.numeric(max(entries$time_end))
+    TIME_START = min(entries$time_start),
+    TIME_END = max(entries$time_end)
   ))
 }
 
-report_time_period <- get_report_time_period()
-TIME_START <<- report_time_period$TIME_START %||% 0
-TIME_END <<- report_time_period$TIME_END %||% 0
+if (!NO_API_KEY_IN_ENVIRONMENT) {
+  report_time_period <- get_report_time_period()
+  TIME_START <<- report_time_period$TIME_START %||% Sys.time()
+  TIME_END <<- report_time_period$TIME_END %||% Sys.time()
 
-DURATION_TOTAL <<- entries %>%
-  pull(duration) %>%
-  sum() %||% 0
-
-# Weekly report dates
-library(lubridate)
-WEEK_END <<- ceiling_date(TIME_END, unit = "day") %>% as.Date() + 1
-WEEK_START <<- WEEK_END - 7
+  # Weekly report dates
+  library(lubridate)
+  WEEK_END <<- ceiling_date(TIME_END, unit = "day") %>% as.Date() + 1
+  WEEK_START <<- WEEK_END - 7
+}
 
 test_that("no shared reports (or some exist)", {
   skip_on_cran()
@@ -42,12 +40,12 @@ test_that("no shared reports (or some exist)", {
   expect_identical(names(reports), SHARED_REPORT_LIST_COLS)
   # Accept any number of shared reports, including zero
   expect_gte(nrow(reports), 0)
-}),
+})
 
 test_that("create shared report", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.null(report_time_period), info = "No valid time period for reports")
+  skip_if(is.null(report_time_period), message = "No valid time period for reports")
 
   SHARED_REPORT_NAME <<- random_string()
 
@@ -57,7 +55,7 @@ test_that("create shared report", {
   expect_true(all(names(report) %in% names(SHARED_REPORT_LIST_COLS)))
 
   SHARED_REPORT_ID <<- report$shared_report_id
-}),
+})
 
 test_that("get shared reports", {
   skip_on_cran()
@@ -70,22 +68,22 @@ test_that("get shared reports", {
   if (!is.na(SHARED_REPORT_ID)) {
     expect_true(SHARED_REPORT_ID %in% reports$shared_report_id || TRUE)
   }
-}),
+})
 
 test_that("get shared report", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(SHARED_REPORT_ID), info = "Shared report not created yet")
+  skip_if(is.na(SHARED_REPORT_ID), message = "Shared report not created yet")
 
   report <- shared_report(SHARED_REPORT_ID)
 
   expect_true(all(names(report) %in% c("totals", "groups", "filters")))
-}),
+})
 
 test_that("update shared report", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(SHARED_REPORT_ID), info = "Shared report not found, skipping")
+  skip_if(is.na(SHARED_REPORT_ID), message = "Shared report not found, skipping")
 
   tryCatch({
     SHARED_REPORT_NAME <<- random_string()
@@ -96,12 +94,12 @@ test_that("update shared report", {
   }, error = function(e) {
     warning("Could not update shared report (may be deprecated): ", e$message)
   })
-}),
+})
 
 test_that("delete shared report", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(SHARED_REPORT_ID), info = "No shared report to delete")
+  skip_if(is.na(SHARED_REPORT_ID), message = "No shared report to delete")
 
   tryCatch({
     shared_report_delete(SHARED_REPORT_ID)

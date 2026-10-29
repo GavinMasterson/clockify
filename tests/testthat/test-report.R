@@ -1,6 +1,6 @@
 # Report tests - uses your own workspace and time entries dynamically
 
-REPORT_SUMMARY_COLS <- c("user_name", "duration", "amount", "amounts", "projects")
+REPORT_SUMMARY_COLS <- c("user_id", "user_name", "duration", "amount", "amounts", "projects")
 REPORT_DETAILED_COLS <- c(
   "id",
   "description",
@@ -29,7 +29,7 @@ REPORT_DETAILED_COLS <- c(
   "client_name",
   "client_id"
 )
-REPORT_WEEKLY_COLS <- c("user_name", "duration", "amount", "projects")
+REPORT_WEEKLY_COLS <- c("user_id", "user_name", "duration", "amount", "projects")
 
 get_report_time_period <- function() {
   w <- workspaces()
@@ -46,17 +46,15 @@ get_report_time_period <- function() {
   
   return(list(
     workspace = workspace,
-    TIME_START = as.numeric(min(entries$time_start)),
-    TIME_END = as.numeric(max(entries$time_end)),
-    DURATION_TOTAL = sum(entries$duration)
+    TIME_START = min(entries$time_start),
+    TIME_END = max(entries$time_end),
+    DURATION_TOTAL = sum(entries$duration),
+    ENTRIES = entries
   ))
 }
 
-report_tests_setup <- get_report_time_period()
-if (is.null(report_tests_setup)) {
-  # Tests were skipped due to no valid entries
-  return()
-}
+# NULL if there's no API key or no time entries, in which case the tests skip.
+report_tests_setup <- if (!NO_API_KEY_IN_ENVIRONMENT) get_report_time_period()
 
 TIME_START <<- report_tests_setup$TIME_START
 TIME_END <<- report_tests_setup$TIME_END
@@ -73,6 +71,14 @@ test_that("summary report", {
     expect_equal(report$duration, report_tests_setup$DURATION_TOTAL)
   }
   expect_identical(names(report), REPORT_SUMMARY_COLS)
+
+  # Entry durations should add up to the user total (each entry is one row).
+  entries <- report %>%
+    select(projects) %>%
+    unnest(projects) %>%
+    select(entries) %>%
+    unnest(entries)
+  expect_equal(sum(entries$duration), sum(report$duration))
 })
 
 test_that("detailed report", {
@@ -86,7 +92,9 @@ test_that("detailed report", {
     total_duration <- report %>% pull(duration) %>% sum(na.rm = TRUE)
     expect_equal(total_duration, report_tests_setup$DURATION_TOTAL)
   }
-  expect_true(all(sort(names(report)) %in% sort(REPORT_DETAILED_COLS)))
+  expect_true(all(names(report) %in% REPORT_DETAILED_COLS))
+  # These are omitted by the API on the Free plan, but should always be present.
+  expect_true(all(c("amount", "rate") %in% names(report)))
 })
 
 test_that("weekly report", {
@@ -101,8 +109,10 @@ test_that("weekly report", {
   
   report <- reports_weekly(week_start, week_end)
 
-  if (!is.null(report_tests_setup$DURATION_TOTAL)) {
-    expect_equal(report$duration, report_tests_setup$DURATION_TOTAL)
-  }
+  # Only the entries that start in the week are included in the report.
+  entries <- report_tests_setup$ENTRIES
+  in_week <- entries$time_start >= as.POSIXct(week_start, tz = "UTC") &
+    entries$time_start < as.POSIXct(week_end, tz = "UTC")
+  expect_equal(sum(report$duration), sum(entries$duration[in_week]))
   expect_identical(names(report), REPORT_WEEKLY_COLS)
 })

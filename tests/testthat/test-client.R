@@ -11,7 +11,7 @@ test_that("get clients", {
   expect_identical(names(clients), CLIENTS_COLS_CONCISE)
   # Accept any number of clients, including zero
   expect_true(TRUE)
-}),
+})
 
 test_that("extended output", {
   skip_on_cran()
@@ -19,7 +19,7 @@ test_that("extended output", {
 
   clients <- clients(concise = FALSE)
   expect_identical(names(clients), CLIENTS_COLS)
-}),
+})
 
 test_that("create client", {
   skip_on_cran()
@@ -41,22 +41,22 @@ test_that("create client", {
     warning("Client already exists, skipping create test")
     return(NULL)
   }
-}),
+})
 
 test_that("update client", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(CLIENT_ID_PSF), info = "Client ID not found, skipping")
+  skip_if(is.na(CLIENT_ID_PSF), message = "Client ID not found, skipping")
 
   psf <- client_update(CLIENT_ID_PSF, name = sprintf("Updated %s", CLIENT_NAME_PSF))
 
   expect_true(nchar(psf$client_name) > 0)
-}),
+})
 
 test_that("delete client", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.na(CLIENT_ID_PSF), info = "Client ID not found, skipping")
+  skip_if(is.na(CLIENT_ID_PSF), message = "Client ID not found, skipping")
   
   # Only archive (soft delete) to be safe
   expect_true(client_delete(CLIENT_ID_PSF, archive = TRUE))

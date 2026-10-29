@@ -1,5 +1,8 @@
 library(stringi)
 
+CLOCKIFY_API_KEY <- Sys.getenv("CLOCKIFY_API_KEY")
+NO_API_KEY_IN_ENVIRONMENT <- CLOCKIFY_API_KEY == ""
+
 set_api_key(CLOCKIFY_API_KEY)
 
 # Dynamic workspace lookup - use first workspace that has the "clockify" project
@@ -17,7 +20,6 @@ get_test_workspace <- function() {
     return(wks$name[1])
   }
 }
-CLOCKIFY_WORKSPACE <- get_test_workspace()
 
 # Get your user ID from API response
 get_authenticated_user_id <- function() {
@@ -27,7 +29,6 @@ get_authenticated_user_id <- function() {
   }
   return(user_data$user_id)
 }
-USER_ID_AUTHENTICATED <- get_authenticated_user_id()
 
 # Get other test users (optional - use your own collaborators)
 # If no other users exist, we'll create test users or use dummy IDs for testing
@@ -60,15 +61,30 @@ get_test_project <- function(project_name_pattern = NULL) {
   }
 }
 
-PROJECT <- get_test_project()
-PROJECT_ID <- PROJECT$project_id
-PROJECT_NAME <- PROJECT$project_name
+# IDs set by earlier tests (with <<-) and checked with skip_if(is.na(...)) in
+# later ones. Start them as NA so that later tests skip (rather than error) if
+# the test that sets them is skipped or fails.
+PROJECT_ID <- NA
+CLIENT_ID_PSF <- NA
+TAG_ID <- NA
+TASK_ID <- NA
+TIME_ENTRY_ID <- NA
+SHARED_REPORT_ID <- NA
+
+# These lookups need the API, so only run them if there's a key. Without one the
+# API tests are skipped but offline tests (like test-util.R) can still run.
+if (!NO_API_KEY_IN_ENVIRONMENT) {
+  CLOCKIFY_WORKSPACE <- get_test_workspace()
+  USER_ID_AUTHENTICATED <- get_authenticated_user_id()
+
+  PROJECT <- get_test_project()
+  PROJECT_ID <- PROJECT$project_id
+  PROJECT_NAME <- PROJECT$project_name
+}
 
 # Client info - use your own or create one
 CLIENT_ID_RSTUDIO <- character(0)  # Will be NULL if no clients
 CLIENT_NAME_PSF <- "Python Software Foundation"  # Example client name
-
-NO_API_KEY_IN_ENVIRONMENT <- CLOCKIFY_API_KEY == ""
 
 random_string <- function(length = 24) {
   stri_rand_strings(1, length)
@@ -79,11 +95,9 @@ random_integer <- function(min = 0, max = 100) {
 }
 
 TAG_NAME <- random_string()
-TAG_ID <- NULL
 TAG_NAME_UPDATED <- random_string()
 
 TASK_NAME <- random_string()
-TASK_ID <- NULL
 TASK_NAME_UPDATED <- random_string()
 
 TIME_CURRENT <- Sys.time()
