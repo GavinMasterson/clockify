@@ -1,6 +1,6 @@
 library(stringi)
 
-CLOCKIFY_API_KEY <- Sys.getenv("CLOCKIFY_API_KEY")
+set_api_key(CLOCKIFY_API_KEY)
 
 # Dynamic workspace lookup - use first workspace that has the "clockify" project
 # or fall back to your default workspace.
@@ -9,12 +9,13 @@ get_test_workspace <- function() {
   if (nrow(wks) == 0) {
     stop("No workspaces found. Please create a workspace in your Clockify account.")
   }
-  # Prefer workspace with a "clockify" project, or use first workspace
-  if (length(grep("clockify", toupper(wks$name), ignore.case = TRUE)) > 0) {
-    return(wks$name[wks$name %in% grep("clockify", toupper(wks$name), ignore.case = TRUE)[1]])
+  if ("clockify" %in% wks$name) {
+    return("clockify")
+  } else {
+    # Prefer workspace with a "clockify" project, or use first workspace
+    warning("No 'clockify' workspace found, using first workspace.")
+    return(wks$name[1])
   }
-  warning("No 'clockify' workspace found, using first workspace.")
-  return(wks$name[1])
 }
 CLOCKIFY_WORKSPACE <- get_test_workspace()
 
@@ -36,38 +37,27 @@ USER_ID_ALICE <- NULL
 USER_ID_CAROL <- NULL
 
 # Get projects dynamically
-get_projects <- function(project_name_pattern = NULL) {
-  projects <- projects()
-  if (nrow(projects) == 0) {
+get_test_project <- function(project_name_pattern = NULL) {
+  existing_projects <- projects()
+  if (nrow(existing_projects) == 0) {
     stop("No projects found. Please create a project in your Clockify workspace.")
   }
-  if (!is.null(project_name_pattern)) {
-    # Filter projects by name pattern if provided
-    matching <- projects$name[toupper(projects$name) %in% toupper(project_name_pattern)]
-    if (length(matching) > 0) {
-      return(projects$name[projects$name %in% matching][1])
-    }
-  }
-  # Return first project if no pattern or no match
-  return(projects$name[1])
-}
-
-# Get/create a project for testing
-get_test_project <- function() {
-  # Check if test project exists
-  existing_projects <- projects()
-  
-  # If we have projects, use first one
-  if (nrow(existing_projects) > 0 && nchar(existing_projects$name[1]) > 0) {
-    msg <- sprintf("Using project: %s", existing_projects$name[1])
-    warning(msg)
+  if ("test" %in% existing_projects$project_name) {
+    project <-
+      existing_projects |>
+      dplyr::filter(project_name == "test")
+    return(list(
+      project_id = project$project_id[1],
+      project_name = project$project_name[1]
+    ))
+  } else {
+    warning("No 'test' project found, using first project")
+    # Return first project if no pattern or no match
     return(list(
       project_id = existing_projects$project_id[1],
-      project_name = existing_projects$name[1]
+      project_name = existing_projects$project_name[1]
     ))
   }
-  
-  stop("No projects found in workspace. Please create a project or check your workspace.")
 }
 
 PROJECT <- get_test_project()

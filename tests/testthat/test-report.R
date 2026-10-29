@@ -6,14 +6,21 @@ REPORT_DETAILED_COLS <- c(
   "description",
   "user_id",
   "start",
+  "offStart",
+  "offEnd",
   "end",
   "duration",
+  "timeZone",
+  "zonedStart",
+  "zonedEnd",
   "billable",
   "project_id",
   "task_id",
   "tag_ids",
   "approval_request_id",
+  "type",
   "is_locked",
+  "currency",
   "amount",
   "rate",
   "user_name",
@@ -58,7 +65,7 @@ DURATION_TOTAL <<- report_tests_setup$DURATION_TOTAL
 test_that("summary report", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.null(report_tests_setup), info = "No time entries found for reports")
+  skip_if(is.null(report_tests_setup), message = "No time entries found for reports")
 
   report <- reports_summary(report_tests_setup$TIME_START, report_tests_setup$TIME_END)
 
@@ -66,12 +73,12 @@ test_that("summary report", {
     expect_equal(report$duration, report_tests_setup$DURATION_TOTAL)
   }
   expect_identical(names(report), REPORT_SUMMARY_COLS)
-}),
+})
 
 test_that("detailed report", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.null(report_tests_setup), info = "No time entries found for reports")
+  skip_if(is.null(report_tests_setup), message = "No time entries found for reports")
 
   report <- reports_detailed(report_tests_setup$TIME_START, report_tests_setup$TIME_END)
 
@@ -80,12 +87,12 @@ test_that("detailed report", {
     expect_equal(total_duration, report_tests_setup$DURATION_TOTAL)
   }
   expect_true(all(sort(names(report)) %in% sort(REPORT_DETAILED_COLS)))
-}),
+})
 
 test_that("weekly report", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
-  skip_if(is.null(report_tests_setup), info = "No time entries found for reports")
+  skip_if(is.null(report_tests_setup), message = "No time entries found for reports")
   
   # Calculate weekly dates
   library(lubridate)

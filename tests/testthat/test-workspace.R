@@ -44,7 +44,7 @@ test_that("set default workspace for authenticated user", {
 
   workspace <- workspace()
   expect_false(workspace == "")
-}),
+})
 
 test_that("choose workspace", {
   skip_on_cran()
@@ -55,7 +55,7 @@ test_that("choose workspace", {
   # Test that we can set and get workspace
   set_active_workspace(current_ws)
   expect_identical(workspace(), current_ws)
-}),
+})
 
 test_that("get cached workspace", {
   skip_on_cran()

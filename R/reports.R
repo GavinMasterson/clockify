@@ -143,10 +143,11 @@ reports_detailed <- function(start, end, extra_args = list()) {
     # Handle breaking change: amount/rate sub-objects may be missing on Free plan
     # starting June 2026 (see https://forum.clockify.me/t/breaking-change-to-the-reports-detailed-time-entry/10035)
     if (!is.null(entries) && nrow(entries) > 0) {
-      entries$amount[is.na(entries$amount)] <- NULL
-      entries$rate[is.na(entries$rate)] <- NULL
+      if(!"amount" %in% names(entries)) entries <- add_column(entries, amount = NA)
     }
-
+    if (!is.null(entries) && nrow(entries) > 0) {
+      if(!"rate" %in% names(entries)) entries <- add_column(entries, rate = NA)
+    }
     if (!nrow(entries)) break
 
     results <- append(results, list(entries))
