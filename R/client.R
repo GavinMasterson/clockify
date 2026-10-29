@@ -6,6 +6,14 @@
 #' @param concise Generate concise output
 NULL
 
+EMPTY_CLIENTS <- tibble(
+  client_id = character(),
+  workspace_id = character(),
+  client_name = character(),
+  archived = logical(),
+  address = character()
+)
+
 parse_client <- function(client, concise = TRUE) {
   client <- client %$%
     tibble(
@@ -41,13 +49,20 @@ parse_client <- function(client, concise = TRUE) {
 clients <- function(concise = TRUE) {
   path <- sprintf("/workspaces/%s/clients", workspace())
 
-  paginate(path) %>%
-    map_df(parse_client, concise = concise)
+  clients <- paginate(path)
+
+  if (length(clients)) {
+    clients %>% map_df(parse_client, concise = concise)
+  } else if (concise) {
+    EMPTY_CLIENTS %>% select(-archived, -address)
+  } else {
+    EMPTY_CLIENTS
+  }
 }
 
 #' Get client
 #'
-#' @param client_id Client ID
+#' @inheritParams client-parameters
 #'
 #' @return A data frame with one record per client
 #' @export
@@ -59,9 +74,9 @@ clients <- function(concise = TRUE) {
 client <- function(client_id, concise = TRUE) {
   path <- sprintf("/workspaces/%s/clients/%s", workspace(), client_id)
 
-  clockify:::GET(path) %>%
+  GET(path) %>%
     content() %>%
-    clockify:::parse_client(concise = concise)
+    parse_client(concise = concise)
 }
 
 #' Add a new client to workspace

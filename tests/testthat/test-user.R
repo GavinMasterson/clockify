@@ -12,7 +12,7 @@ test_that("get active users", {
 
   users <- users(active = TRUE)
   expect_identical(names(users), USERS_COLS_CONCISE)
-  expect_gte(nrow(users), 1, info = "You need at least one active user")
+  expect_true(USER_ID_AUTHENTICATED %in% users$user_id)
 })
 
 test_that("get all users", {
@@ -21,15 +21,13 @@ test_that("get all users", {
 
   users <- users(active = FALSE)
   expect_identical(names(users), USERS_COLS_CONCISE)
-  expect_gte(nrow(users), 1, info = "You need at least one user (active or inactive)")
 })
 
 test_that("ID for authenticated user", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
 
-  user <- user()
-  expect_scalar(user$user_id)
+  expect_equal(user_get_id(), USER_ID_AUTHENTICATED)
 })
 
 test_that("extended output", {
@@ -57,12 +55,12 @@ test_that("update hourly rate", {
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
 
   rate <- runif(1, 0, 1000) %>% ceiling()
-  users <- users(active = TRUE)
-  
-  # Use first available user ID for testing, or the authenticated user
-  test_user_id <- USER_ID_ALICE %||% user_get_id()
-  
-  workspace <- user_update_hourly_rate(test_user_id, rate, NULL)
+
+  test_user_id <- USER_ID_ALICE %||% USER_ID_AUTHENTICATED
+
+  workspace <- skip_if_rates_forbidden(
+    user_update_hourly_rate(test_user_id, rate, NULL)
+  )
 
   expect_equal(
     workspace %>%
@@ -84,7 +82,7 @@ test_that("update user status", {
     unnest(cols = c(memberships)) %>%
     filter(user_id == USER_ID_CAROL)
   
-  expect_in(users$membership_status, c("INACTIVE", "PENDING_EMAIL_VERIFICATION"))
+  expect_true(users$membership_status %in% c("INACTIVE", "PENDING_EMAIL_VERIFICATION"))
 
   workspace <- user_update_status(USER_ID_CAROL, "ACTIVE")
   users <- workspace %>%

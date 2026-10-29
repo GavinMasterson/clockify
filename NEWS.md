@@ -11,6 +11,12 @@
 * `reports_summary()` entries no longer have an `id` column. Entries are
   grouped by description, so there's no time entry ID. This also fixes each
   entry being repeated three times.
+* `workspaces()` only returns its documented columns, so new API fields (like
+  `cakeOrganizationId`) don't change the output.
+* Fix the user group functions, which returned no rows because of a new
+  `teamManagers` field in the API.
+* `clients()` and `tags()` return a data frame with the usual columns when
+  there are none. Previously `clients()` had no columns and `tags()` failed.
 
 # {clockify} 0.1.3
 
