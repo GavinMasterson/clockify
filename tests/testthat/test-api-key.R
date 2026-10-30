@@ -35,14 +35,14 @@ test_that("set api key", {
     warning("No projects found. Tests may fail if they depend on existing projects.")
     return()
   }
-  
+
   # Use first 1-2 projects for creating time entries
   project_ids <- projects$project_id[1:min(2, nrow(projects))]
-  
+
   for (i in seq_along(project_ids)) {
     TIME_END <- TIME_CURRENT - random_integer(86400)
     TIME_START <- TIME_END - random_integer(3600 * 6)
-    
+
     time_entry_create(
       USER_ID_AUTHENTICATED,
       project_id = project_ids[i],

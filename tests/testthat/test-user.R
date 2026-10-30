@@ -46,7 +46,7 @@ test_that("NA for missing username (optional)", {
   result <- users() %>%
     filter(user_id == USER_ID_MISSING_NAME) %>%
     summarise(has_na = any(is.na(user_name)))
-  
+
   expect_true(result$has_na)
 })
 
@@ -77,18 +77,18 @@ test_that("update user status", {
   skip_if(is.null(USER_ID_CAROL), message = "Test user CAROL not found, skipping status test")
 
   workspace <- user_update_status(USER_ID_CAROL, FALSE)
-  
+
   users <- workspace %>%
     unnest(cols = c(memberships)) %>%
     filter(user_id == USER_ID_CAROL)
-  
+
   expect_true(users$membership_status %in% c("INACTIVE", "PENDING_EMAIL_VERIFICATION"))
 
   workspace <- user_update_status(USER_ID_CAROL, "ACTIVE")
   users <- workspace %>%
     unnest(cols = c(memberships)) %>%
     filter(user_id == USER_ID_CAROL)
-  
+
   expect_equal(users$membership_status, "ACTIVE")
 })
 
@@ -96,7 +96,7 @@ test_that("update user role", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
   skip_if(is.null(USER_ID_BOB), message = "Test user BOB not found, skipping role test")
-  
+
   workspace <- user_update_role(USER_ID_BOB, "WORKSPACE_ADMIN", clockify::workspace())
 
   expect_equal(
@@ -111,6 +111,6 @@ test_that("delete user role", {
   skip_if(is.null(USER_ID_BOB), message = "Test user BOB not found, skipping role delete test")
 
   workspace <- user_update_role(USER_ID_BOB, "WORKSPACE_ADMIN", clockify::workspace())
-  
+
   expect_true(user_delete_role(USER_ID_BOB, "WORKSPACE_ADMIN", clockify::workspace()))
 })

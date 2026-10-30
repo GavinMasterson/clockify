@@ -42,13 +42,13 @@ get_report_time_period <- function() {
     stop("No workspaces found")
   }
   workspace <- w$name[1]
-  
+
   entries <- time_entries(user_id = USER_ID_AUTHENTICATED, concise = FALSE)
   if (nrow(entries) == 0) {
     warning("No time entries to build report. Skip report tests.")
     return(NULL)
   }
-  
+
   return(list(
     workspace = workspace,
     TIME_START = min(entries$time_start),
@@ -94,7 +94,9 @@ test_that("detailed report", {
   report <- reports_detailed(report_tests_setup$TIME_START, report_tests_setup$TIME_END)
 
   if (!is.null(report_tests_setup$DURATION_TOTAL)) {
-    total_duration <- report %>% pull(duration) %>% sum(na.rm = TRUE)
+    total_duration <- report %>%
+      pull(duration) %>%
+      sum(na.rm = TRUE)
     expect_equal(total_duration, report_tests_setup$DURATION_TOTAL)
   }
   expect_true(all(names(report) %in% REPORT_DETAILED_COLS))
@@ -106,12 +108,12 @@ test_that("weekly report", {
   skip_on_cran()
   skip_if(NO_API_KEY_IN_ENVIRONMENT)
   skip_if(is.null(report_tests_setup), message = "No time entries found for reports")
-  
+
   # Calculate weekly dates
   library(lubridate)
   week_end <- ceiling_date(report_tests_setup$TIME_END, unit = "day") %>% as.Date() + 1
   week_start <- week_end - 7
-  
+
   report <- reports_weekly(week_start, week_end)
 
   # Only the entries that start in the week are included in the report.

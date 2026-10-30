@@ -42,7 +42,7 @@ get_authenticated_user_id <- function() {
 
 # Get other test users (optional - use your own collaborators)
 # If no other users exist, we'll create test users or use dummy IDs for testing
-USER_ID_MISSING_NAME <- NULL  # Will be resolved if you need it
+USER_ID_MISSING_NAME <- NULL # Will be resolved if you need it
 USER_ID_BOB <- NULL
 USER_ID_ALICE <- NULL
 USER_ID_CAROL <- NULL

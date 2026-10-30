@@ -21,13 +21,16 @@ test_that("create time entry", {
   skip_if(is.na(PROJECT_ID), message = "Project not found, skipping")
 
   # Clean up any existing time entries first
-  tryCatch({
-    existing_entries <- time_entries()
-    walk(existing_entries$time_entry_id, time_entry_delete)
-  }, error = function(e) NULL)
-  
+  tryCatch(
+    {
+      existing_entries <- time_entries()
+      walk(existing_entries$time_entry_id, time_entry_delete)
+    },
+    error = function(e) NULL
+  )
+
   project_id <- PROJECT_ID
-  
+
   TIME_END <- TIME_CURRENT - random_integer(86400)
   TIME_START <- TIME_END - random_integer(3600 * 6)
   TIME_ENTRY_DESCRIPTION <<- random_string()
@@ -37,7 +40,7 @@ test_that("create time entry", {
   expect_equal(entry$user_id, USER_ID_AUTHENTICATED)
   expect_equal(entry$project_id, project_id)
   expect_equal(entry$description, TIME_ENTRY_DESCRIPTION)
-  
+
   TIME_ENTRY_ID <<- entry$time_entry_id
 })
 
@@ -51,7 +54,7 @@ test_that("get time entries", {
 
   entries <- time_entries(user_id = USER_ID_AUTHENTICATED, concise = FALSE)
   expect_identical(names(entries), TIME_ENTRIES_COLS)
-  
+
   expect_true(TIME_ENTRY_ID %in% entries$time_entry_id)
 })
 

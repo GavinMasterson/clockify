@@ -18,7 +18,7 @@ test_that("create task", {
   skip_if(is.na(PROJECT_ID), message = "Project not found, skipping")
 
   TASK_NAME <<- sprintf("Test Task - %s", random_string())
-  
+
   task <- task_create(PROJECT_ID, TASK_NAME)
 
   expect_equal(TASK_NAME, task$name)
